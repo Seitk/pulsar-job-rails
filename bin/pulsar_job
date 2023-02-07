@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+require "bundler/setup"
+require File.expand_path(File.join(Dir.pwd, "config", "environment"),  __FILE__)
+
+module PulsarJob
+  class << self
+    attr_reader :consumer
+
+    class InvalidJobClassError < StandardError; end
+    class NotPulsarJobError < StandardError; end
+
+    def start(argv)
+      command = argv.try(:first)
+      case command
+      when "produce"
+        start_producer(argv)
+      when "consume"
+        start_consumer(argv)
+      end
+    end
+
+    private
+
+    def start_producer(argv)
+      cli = ::PulsarJob::CLI.new(argv)
+      job_class = load_job_class(argv.try(:[], 1))
+
+      @producer = ::PulsarJob::Producer.new(job_class)
+      @producer.publish!(cli.data)
+
+      gracefully_shutdown(0)
+    end
+
+    def start_consumer(argv)
+      cli = ::PulsarJob::CLI.new(argv)
+      job_class = load_job_class(argv.try(:[], 1))
+      @consumer = ::PulsarJob::Consumer.new(job_class)
+
+      Signal.trap('INT', &method(:gracefully_shutdown))
+      Signal.trap('TERM', &method(:gracefully_shutdown))
+
+      PulsarJob.logger.info "#{job_class.name} is starting to consume messages [topic=#{@consumer.job.topic}}][subscription=#{@consumer.job.subscription}}]"
+      @consumer.subscribe!
+    end
+
+    def gracefully_shutdown(signal)
+      return if @shutting_down
+
+      Thread.new do
+        PulsarJob.logger.debug "Received SIG#{Signal.signame(signal)}, Gracefully shutting down consumer"
+        @shutting_down = true
+
+        @producer.shutdown if @producer
+        @consumer.shutdown if @consumer
+
+        PulsarJob::Client.instance.close
+        PulsarJob.logger.debug "Pulsar client closed"
+        PulsarJob.logger.debug "Bye!"
+      end.join
+
+      exit 0
+    end
+
+    def load_job_class(job_name)
+      begin
+        job_class = job_name.constantize
+        unless job_class.ancestors.include?(PulsarJob::Base)
+          raise NotPulsarJobError.new("Job class #{job_name} does not inherit PulsarJob::Base")
+        end
+      rescue NameError
+        raise InvalidJobClassError.new("Unable to find job class #{job_name}")
+      end
+
+      job_class
+    end
+  end
+end
+
+::PulsarJob.start(ARGV)
