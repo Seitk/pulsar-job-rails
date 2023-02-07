@@ -11,7 +11,7 @@ module PulsarJob
       end
     end
 
-    attr_reader :job_name, :data
+    attr_reader :job_name, :data, :class, :topic, :subscription
 
     OPTIONS = {
       job: {
@@ -22,7 +22,19 @@ module PulsarJob
         command: "-d",
         description: "The data to produce with the job message in JSON string format. e.g. '{\"foo\": \"bar\"}'",
       },
-    }.freeze
+      class: {
+        command: "-c",
+        description: "The class to run as consumer handler, e.g. . Remark: only used with Class.async call. e.g. YourModel.async.some_method",
+      },
+      topic: {
+        command: "-t",
+        description: "The topic to consume from, only used with Class.async call. e.g. YourModel.async.some_method",
+      },
+      subscription: {
+        command: "-s",
+        description: "The subscription name of consumes, only used with Class.async call. e.g. YourModel.async.some_method",
+      },
+    }.freeze  
 
     def initialize(args)
       @parser = build_parser
@@ -58,6 +70,10 @@ module PulsarJob
       case name
       when :job
         @job_name = value.to_s.underscore
+      when :class
+        @class = value.to_s.underscore
+      when :topic, :subscription
+        instance_variable_set("@#{name}", value)
       when :data
         @data = JSON.parse(value)
       end

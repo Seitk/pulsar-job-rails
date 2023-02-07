@@ -9,7 +9,7 @@ require "pulsar-job-rails/consumer"
 require "pulsar-job-rails/producer"
 require "pulsar-job-rails/base"
 require "pulsar-job-rails/async/options"
-require "pulsar-job-rails/async_job"
+require "pulsar-job-rails/async/wrapper"
 require "pulsar-job-rails/asyncable"
 
 module PulsarJob

@@ -10,11 +10,12 @@ module PulsarJob
     class JobClassNotConfiguredError < StandardError; end
     class JobTopicNotFoundError < StandardError; end
 
-    def initialize(job_class)
-      if job_class.nil?
+    def initialize(job_class: nil, job: nil)
+      if job_class.nil? && job.nil?
         raise JobClassNotConfiguredError.new("Job class not configured")
       end
-      @job = job_class.new
+      @job = job
+      @job = job_class.new if job.nil?
     end
 
     def subscribe!
@@ -45,7 +46,7 @@ module PulsarJob
           Thread.new do
             begin
               msg = consumer.receive(5000)
-              PulsarJob.logger.debug "======== Message received: #{msg.redelivery_count}"
+              # PulsarJob.logger.debug "======== Message received: #{msg.redelivery_count}"
             rescue Pulsar::Error::Timeout
               # No message received, continue
               @is_running = false
@@ -74,11 +75,12 @@ module PulsarJob
             job.perform(*args)
           else
             job.perform({
-              payload: job.payload,
+              payload: payload,
               message_id: msg.message_id,
               raw: msg,
             })
           end
+          PulsarJob.logger.debug "Message handled successfully"
           consumer.acknowledge(msg)
         rescue ArgumentError => ex
           PulsarJob.logger.error "Error while handling message: #{ex.message}. Message: #{ex.message}"

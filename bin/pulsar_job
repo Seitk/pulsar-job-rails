@@ -34,13 +34,23 @@ module PulsarJob
 
     def start_consumer(argv)
       cli = ::PulsarJob::CLI.new(argv)
-      job_class = load_job_class(argv.try(:[], 1))
-      @consumer = ::PulsarJob::Consumer.new(job_class)
+      job_class_name = argv.try(:[], 1)
+
+      if job_class_name == "PulsarJob::Async::Wrapper"
+        @wrapper = ::PulsarJob::Async::Wrapper.new(nil).set(
+          topic: cli.topic,
+          subscription: cli.subscription,
+        )
+        @consumer = ::PulsarJob::Consumer.new(job: @wrapper)
+      else
+        @job = load_job_class(job_class_name).new
+        @consumer = ::PulsarJob::Consumer.new(job: @job)
+      end
 
       Signal.trap('INT', &method(:gracefully_shutdown))
       Signal.trap('TERM', &method(:gracefully_shutdown))
 
-      PulsarJob.logger.info "#{job_class.name} is starting to consume messages [topic=#{@consumer.job.topic}}][subscription=#{@consumer.job.subscription}}]"
+      PulsarJob.logger.info "#{job_class_name} is starting to consume messages [topic=#{@consumer.job.topic}}][subscription=#{@consumer.job.subscription}}]"
       @consumer.subscribe!
     end
 
@@ -54,7 +64,10 @@ module PulsarJob
         @producer.shutdown if @producer
         @consumer.shutdown if @consumer
 
-        PulsarJob::Client.instance.close
+        # if @producer || @consumer
+          # Only close the client if producer or consumer is running
+          PulsarJob::Client.instance.close
+        # end
         PulsarJob.logger.debug "Pulsar client closed"
         PulsarJob.logger.debug "Bye!"
       end.join
@@ -62,10 +75,10 @@ module PulsarJob
       exit 0
     end
 
-    def load_job_class(job_name)
+    def load_job_class(job_name, pulsar_job: true)
       begin
         job_class = job_name.constantize
-        unless job_class.ancestors.include?(PulsarJob::Base)
+        unless pulsar_job && job_class.ancestors.include?(PulsarJob::Base)
           raise NotPulsarJobError.new("Job class #{job_name} does not inherit PulsarJob::Base")
         end
       rescue NameError

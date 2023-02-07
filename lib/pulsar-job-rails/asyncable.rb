@@ -6,17 +6,18 @@ module PulsarJob
   module Asyncable
     extend ActiveSupport::Concern
 
-    def self.wrap(klass, method, async_options = ::PulsarJob::Async::Options.new)
+    def self.wrap(klass, method, async_options = Options.new)
       klass.singleton_class.send(:alias_method, "#{method}_without_async", method)
       klass.singleton_class .send(:define_method, method) do |*args|
-        async = AsyncJob.new(self).tap do |job|
-          job.options = ::Pulsar::Async::Options.new({
+        wrapper = PulsarJob::Async::Wrapper.new(self).tap do |job|
+          job.options = Options.new({
             klass: klass,
             method: method,
+            instance: self,
             args: args,
           })
         end
-        ::PulsarJob::Producer.publish(async)
+        wrapper.perform_later
       end
     end
 
@@ -24,7 +25,7 @@ module PulsarJob
       base.extend ClassMethods
       
       def async
-        AsyncJob.new(self.class).tap do |wrapper|
+        PulsarJob::Async::Wrapper.new(self.class).tap do |wrapper|
           wrapper.instance = self
         end
       end
@@ -32,7 +33,7 @@ module PulsarJob
 
     module ClassMethods
       def async
-        AsyncJob.new(self)
+        PulsarJob::Async::Wrapper.new(self)
       end
     end
   end
