@@ -43,9 +43,14 @@ module PulsarJob
       end
 
       def method_missing(method, *args)
+        enqueue(method, args)
+        self
+      end
+      
+      def enqueue(method, args)
         @method = method
         @args = args
-        
+
         validate_caller!
         validate_context!
 
@@ -59,12 +64,9 @@ module PulsarJob
         end
 
         # Enqueue
-        puts "========= enqueueing #{method} with #{payloads.inspect}"
-
+        PulsarJob.logger.debug "Enqueueing async job for #{klass.name}.#{method} with #{payloads.inspect}"
         producer = PulsarJob::Producer.new(job: self)
         producer.publish!(payloads)
-
-        self
       end
 
       private

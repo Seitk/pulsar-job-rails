@@ -11,20 +11,12 @@ module PulsarJob
       end
     end
 
-    attr_reader :job_name, :data, :class, :topic, :subscription
+    attr_reader :data, :topic, :subscription
 
     OPTIONS = {
-      job: {
-        command: "-j",
-        description: "The job class to run, e.g. SampleJob",
-      },
       data: {
         command: "-d",
         description: "The data to produce with the job message in JSON string format. e.g. '{\"foo\": \"bar\"}'",
-      },
-      class: {
-        command: "-c",
-        description: "The class to run as consumer handler, e.g. . Remark: only used with Class.async call. e.g. YourModel.async.some_method",
       },
       topic: {
         command: "-t",

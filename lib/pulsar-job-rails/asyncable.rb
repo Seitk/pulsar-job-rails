@@ -6,18 +6,26 @@ module PulsarJob
   module Asyncable
     extend ActiveSupport::Concern
 
-    def self.wrap(klass, method, async_options = Options.new)
-      klass.singleton_class.send(:alias_method, "#{method}_without_async", method)
-      klass.singleton_class .send(:define_method, method) do |*args|
-        wrapper = PulsarJob::Async::Wrapper.new(self).tap do |job|
-          job.options = Options.new({
-            klass: klass,
-            method: method,
-            instance: self,
-            args: args,
-          })
+    def self.wrap(klass, method, async_options = {})
+      klass = klass.constantize if klass.is_a?(String) || klass.is_a?(Symbol)
+      PulsarJob::Async::Wrapper.new(klass).tap do |wrapper|
+        wrapper.method = method
+        wrapper.set(async_options)
+
+        if klass.method_defined?(method)
+          # Instance method
+          klass.send(:alias_method, "#{method}_without_async", method)
+          klass.send(:define_method, method) do |*args|
+            wrapper.instance = self
+            wrapper.enqueue(method, args)
+          end
+        else
+          # Static method
+          klass.singleton_class.send(:alias_method, "#{method}_without_async", method)
+          klass.singleton_class .send(:define_method, method) do |*args|
+            wrapper.enqueue(method, args)
+          end
         end
-        wrapper.perform_later
       end
     end
 

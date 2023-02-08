@@ -38,7 +38,7 @@ module PulsarJob
       fail NotImplementedError
     end
 
-    def self.perform_later
+    def self.perform_later(*args)
       PulsarJob::Producer.publish(self, *args)
     end
 

@@ -66,15 +66,15 @@ module PulsarJob
       payload = process_payload(msg)
       job.run_callbacks(:perform) do
         begin
-          puts "===== debug job #{job.inspect} | #{msg.inspect}"
-          puts "===== payload #{payload.inspect}"
+          handle = job.method.to_sym
+
           if job.payload_as_args?
             # Enqueuing jobs with method arguments, hash keys are ignored
             args = payload.try(:[], 'args')
             args = args.values if args.is_a?(Hash)
-            job.perform(*args)
+            job.send(handle, *args)
           else
-            job.perform({
+            job.send(handle, {
               payload: payload,
               message_id: msg.message_id,
               raw: msg,

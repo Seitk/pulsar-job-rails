@@ -94,6 +94,30 @@ SomeClass.async.set(topic: 'persistent://property/namespace/action').execute_som
 instance.set(topic: 'persistent://property/namespace/action').execute_something
 ```
 
+#### Using Wrapper Dynamically
+
+Sometimes you might need to toggle the method execution from asynchronous to synchronous for testing or debug purpose, Pulsar Job provides another way to wrap the static/instance method with Async Wrapper separately. Which means you might choose to execute async or sync by toggling the `PulsarJob::Asyncable.wrap` logic without changing the codebase in your original logic.
+
+The `PulsarJob::Asyncable.wrap` will alias the original method into `"#{method_name}_without_async"`, which keeping the ability for you to run it in synchronous.
+
+```ruby
+PulsarJob::Asyncable.wrap(SomeClass, :some_static_method, {
+  topic: 'persistent://property/namespace/action',
+})
+
+PulsarJob::Asyncable.wrap(SomeClass, :some_instance_method, {
+  topic: 'persistent://property/namespace/action',
+})
+
+# Use the original call to trigger async execution
+SomeClass.some_static_method
+instance.some_instance_method
+
+# Execute original method
+SomeClass.some_static_method_without_async
+instance.some_instance_method_without_async
+```
+
 ### Using Consumer
 
 Start the consumer with `pulsar_job consume` with the job class name and module.
@@ -164,6 +188,14 @@ module YourModule
   end
 end
 ```
+
+### Pulsar Job Command Options
+
+| Option | Description |
+|--|--|--|
+| data | Payload of producer in JSON string format |
+| topic | Specify the topic of consumer, override the topic specified in class |
+| subscription | The subscription name of consumer, ignore global config |
 
 ## Contributing
 
