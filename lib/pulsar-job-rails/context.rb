@@ -11,12 +11,16 @@ module PulsarJob
     attr_writer :topic
 
     # Message properties
-    attr_accessor :flatten_payloads
-    attr_accessor :payloads
+    attr_accessor :args
+    attr_accessor :payload
     attr_accessor :created_at
 
-    # Backoff policy
+    # Pulsar consume options
     attr_accessor :backoff
+    attr_accessor :consumer_options
+    attr_accessor :backoff # NOT SUPPORTED YET
+    attr_accessor :deliver_after
+    attr_accessor :deliver_at
 
     # Extras
     attr_accessor :deliver_after
@@ -28,6 +32,13 @@ module PulsarJob
 
     # Carry the job result
     attr_writer :result
+
+    def reset_job_context
+      @args = nil
+      @payload = nil
+      @created_at = nil
+      @result = nil
+    end
 
     def subscription
       @subscription || ::PulsarJob.configuration.default_subscription || auto_subscription

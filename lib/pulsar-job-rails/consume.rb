@@ -3,7 +3,7 @@
 require "pulsar/consumer"
 
 module PulsarJob
-  class Consumer
+  class Consume
     attr_reader :job, :client, :consumer, :listener, :is_running
 
     class InvalidJobConsumerOptionsError < StandardError; end
@@ -24,7 +24,7 @@ module PulsarJob
       end
 
       begin
-        @consumer = PulsarJob::Client.instance.subscribe([job.topic], job.subscription, {
+        @consumer = PulsarJob::Pools::Consumers.subscribe([job.topic], job.subscription, {
           consumer_type: job.consumer_type,
         })
         listen
@@ -46,7 +46,6 @@ module PulsarJob
           Thread.new do
             begin
               msg = consumer.receive(5000)
-              # PulsarJob.logger.debug "======== Message received: #{msg.redelivery_count}"
             rescue Pulsar::Error::Timeout
               # No message received, continue
               @is_running = false
@@ -54,7 +53,9 @@ module PulsarJob
           end.join
           handle(msg) if msg.present?
         rescue StandardError => ex
-          PulsarJob.logger.error "Error while receiving message: #{ex.message}"
+          PulsarJob.logger.error "Error on listening message: #{ex.message}"
+        rescue Pulsar::Error::AlreadyClosed
+          @is_running = false
         ensure
           @is_running = false
         end
@@ -63,38 +64,51 @@ module PulsarJob
 
     def handle(msg)
       # Reset the job instance
-      payload = process_payload(msg)
       job.run_callbacks(:perform) do
         begin
-          handle = job.method.to_sym
-
-          if job.payload_as_args?
-            # Enqueuing jobs with method arguments, hash keys are ignored
-            args = payload.try(:[], 'args')
-            args = args.values if args.is_a?(Hash)
-            job.send(handle, *args)
-          else
-            job.send(handle, {
-              payload: payload,
-              message_id: msg.message_id,
-              raw: msg,
-            })
-          end
+          PulsarJob.logger.debug "Message received: #{job.inspect}\##{job._method.inspect}. Payload: #{msg.inspect}"
+          handle_with_job_error_handler(msg)
           PulsarJob.logger.debug "Message handled successfully"
           consumer.acknowledge(msg)
-        rescue ArgumentError => ex
-          PulsarJob.logger.error "Error while handling message: #{ex.message}. Message: #{ex.message}"
+        rescue Exception => ex
+          PulsarJob.logger.error "Error while handling message: #{ex.inspect}"
+
           # Interface mismatch, move to DLQ
           # TODO: Move to DLQ right away
-          consumer.acknowledge(msg)
-        rescue StandardError => ex
-          PulsarJob.logger.error "Error while handling message: #{ex.inspect}. Message: #{ex.message}"
-          # Automatically nack messages that fail
-          consumer.negative_acknowledge(msg)
+          if ex.is_a? ArgumentError
+            consumer.acknowledge(msg)
+          else
+            # Automatically nack messages that fail
+            consumer.negative_acknowledge(msg)
+          end
         end
       end
     rescue StandardError => ex
-      PulsarJob.logger.error "Error while handling message: #{ex.message}. Message: #{ex.message}"
+      PulsarJob.logger.error "Internal error on handling pulsar message: #{ex.message}"
+      PulsarJob.logger.error ex.backtrace.join("\n")
+    end
+
+    def handle_with_job_error_handler(msg)
+      payload = process_payload(msg)
+      job.payload = payload
+      handle = job._method.to_sym
+      if job.payload_as_args?
+        # Enqueuing jobs with method arguments, hash keys are ignored
+        args = payload.try(:[], 'args')
+        args = args.values if args.is_a?(Hash)
+        job.args = args
+        job.result = job.send(handle, *args)
+      else
+        job.result = job.send(handle, {
+          payload: payload,
+          message_id: msg.message_id,
+          raw: msg,
+        })
+      end
+    rescue StandardError => ex
+      job.rescue_with_handler(ex)
+    ensure
+      job.reset_job_context
     end
 
     def shutdown

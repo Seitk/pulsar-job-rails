@@ -17,6 +17,9 @@ module PulsarJob
         start_producer(argv)
       when "consume"
         start_consumer(argv)
+      else
+        # Show help
+        ::PulsarJob::CLI.new(["-h"])
       end
     end
 
@@ -24,9 +27,9 @@ module PulsarJob
 
     def start_producer(argv)
       cli = ::PulsarJob::CLI.new(argv)
-      job_class = load_job_class(argv.try(:[], 1))
+      job = load_job_class(argv.try(:[], 1)).new
 
-      @producer = ::PulsarJob::Producer.new(job_class)
+      @producer = ::PulsarJob::Produce.new(job: job)
       @producer.publish!(cli.data)
 
       gracefully_shutdown(0)
@@ -41,10 +44,10 @@ module PulsarJob
           topic: cli.topic,
           subscription: cli.subscription,
         )
-        @consumer = ::PulsarJob::Consumer.new(job: @wrapper)
+        @consumer = ::PulsarJob::Consume.new(job: @wrapper)
       else
         @job = load_job_class(job_class_name).new
-        @consumer = ::PulsarJob::Consumer.new(job: @job)
+        @consumer = ::PulsarJob::Consume.new(job: @job)
       end
 
       Signal.trap('INT', &method(:gracefully_shutdown))
@@ -60,15 +63,9 @@ module PulsarJob
       Thread.new do
         PulsarJob.logger.debug "Received SIG#{Signal.signame(signal)}, Gracefully shutting down consumer"
         @shutting_down = true
-
-        @producer.shutdown if @producer
-        @consumer.shutdown if @consumer
-
-        # if @producer || @consumer
-          # Only close the client if producer or consumer is running
-          PulsarJob::Client.instance.close
-        # end
-        PulsarJob.logger.debug "Pulsar client closed"
+        PulsarJob::Pools::Consumers.shutdown
+        PulsarJob::Pools::Producers.shutdown
+        PulsarJob::Pools::Client.shutdown
         PulsarJob.logger.debug "Bye!"
       end.join
 

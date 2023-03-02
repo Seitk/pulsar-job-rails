@@ -1,37 +1,28 @@
 # frozen_string_literal: true
 
+require "active_support/rescuable"
+require "pulsar-job-rails/hooks/callbacks"
+
 module PulsarJob
   class Base
-    include PulsarJob::Callbacks
-
-    # Pulsar subscription properties
-    attr_writer :subscription
-    attr_writer :topic
+    include Context
+    include Hooks::Callbacks
+    include ActiveSupport::Rescuable
 
     # Job properties
-    attr_accessor :method
+    attr_accessor :_method
     attr_accessor :use_raw_payload
 
     # Message properties
     attr_accessor :payload
     attr_accessor :created_at
 
-    # Pulsar consume options
-    attr_accessor :consumer_options
-    attr_accessor :backoff
-    attr_accessor :deliver_after
-    attr_accessor :deliver_at
-
-    # For localization
-    attr_accessor :locale
-    attr_accessor :timezone
-
     # Carry the job result
     attr_writer :result
 
     def initialize(*args)
       # Default to perform method, can be overriden by async job
-      @method = :perform
+      @_method = :perform
     end
 
     def perform(*args)
@@ -39,7 +30,7 @@ module PulsarJob
     end
 
     def self.perform_later(*args)
-      PulsarJob::Producer.publish(self, *args)
+      PulsarJob::Produce.publish(self, *args)
     end
 
     def subscription

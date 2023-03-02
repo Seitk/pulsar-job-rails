@@ -12,7 +12,6 @@ module PulsarJob
       def initialize(klass)
         @klass = klass
         @instance = nil
-        @flatten_payloads = true
       end
 
       def set(options)
@@ -65,7 +64,7 @@ module PulsarJob
 
         # Enqueue
         PulsarJob.logger.debug "Enqueueing async job for #{klass.name}.#{method} with #{payloads.inspect}"
-        producer = PulsarJob::Producer.new(job: self)
+        producer = PulsarJob::Produce.new(job: self)
         producer.publish!(payloads)
       end
 

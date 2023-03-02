@@ -9,7 +9,7 @@ module PulsarJob
     def self.wrap(klass, method, async_options = {})
       klass = klass.constantize if klass.is_a?(String) || klass.is_a?(Symbol)
       PulsarJob::Async::Wrapper.new(klass).tap do |wrapper|
-        wrapper.method = method
+        wrapper._method = method
         wrapper.set(async_options)
 
         if klass.method_defined?(method)

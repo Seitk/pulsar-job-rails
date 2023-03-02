@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
   spec.test_files = Dir["spec/**/*"]
 
+  spec.add_dependency "rails"
   spec.add_dependency "pulsar-client"
   spec.add_dependency "optparse"
-  spec.add_development_dependency "rails"
 end

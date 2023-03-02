@@ -31,6 +31,7 @@ You can setup some global configuration on Pulsar Job
 | default_topic | `nil` | The default topic for jobs |
 | logger | `Logger.new(STDOUT)` | The default logger instance to STDOUT |
 | max_shutdown_wait_seconds | `60` | Default max gracefully shutdown period in seconds |
+| producer_send_timeout_millis | `3000` | Timeout on connecting producer |
 
 ### Job Class Definition
 
@@ -184,6 +185,34 @@ module YourModule
   class SomeJob < ApplicationJob
     def perform(*args)
       # Your work here
+    end
+  end
+end
+```
+
+### Error Handlings
+
+Pulsar Job uses ActiveSupport::Rescuable to provide exception handling for job error handling and reporting.
+Error handlers will be examined by error type and choosing the one with highest priority (based on call of rescue_from sequence, child class first).
+
+```
+class ApplicationJob < ::PulsarJob::Base
+  rescue_from StandardError, with: :report_error
+
+  def report_error(ex)
+    # send error reporting to Newrelic or something
+
+    # Re-raise the exception for negative acknowledgement
+    raise ex
+  end
+end
+
+module YourModule
+  rescue_from SpecificError, with: :ignore_error
+
+  class SomeJob < ApplicationJob
+    def ignore_error(ex)
+      Rails.logger.error("SomeJob encountered specific error, ignoring and consider handled successfully")
     end
   end
 end
