@@ -46,6 +46,8 @@ module PulsarJob
           Thread.new do
             begin
               msg = consumer.receive(5000)
+            rescue Pulsar::Error::AlreadyClosed
+              @is_running = false
             rescue Pulsar::Error::Timeout
               # No message received, continue
               @is_running = false

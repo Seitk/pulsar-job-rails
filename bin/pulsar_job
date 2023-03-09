@@ -65,7 +65,7 @@ module PulsarJob
         @shutting_down = true
         PulsarJob::Pools::Consumers.shutdown
         PulsarJob::Pools::Producers.shutdown
-        PulsarJob::Pools::Client.shutdown
+        PulsarJob::Pools::Client.try(:shutdown)
         PulsarJob.logger.debug "Bye!"
       end.join
 
