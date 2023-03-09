@@ -20,7 +20,9 @@ module PulsarJob
             $pulsar_job_pool_consumers ||= {}
             return $pulsar_job_pool_consumers[key] if $pulsar_job_pool_consumers[key]
 
-            consumer = Client.instance.subscribe(topic, subscription, options)
+            consumer = Client.instance_exec do |instance|
+              instance.subscribe(topic, subscription, options)
+            end
             $pulsar_job_pool_consumers ||= {}
             $pulsar_job_pool_consumers[key] ||= consumer
             consumer

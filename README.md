@@ -27,6 +27,10 @@ You can setup some global configuration on Pulsar Job
 | Variable | Default | Description |
 |--|--|--|
 | pulsar_broker_url | `nil` | The pulsar broker url, multiple brokers separated with comma. <br>E.g. pulsar://broker1.cluster.com:6650,broker2.cluster.com:6650 |
+| pulsar_broker_max_retries | `10` | The number of retry when brokers is failed to connect, it will try out each broker specified in `pulsar_broker_url` and find anyone is up and running |
+| pulsar_broker_retry_interval_seconds | `1` | The retry interval of connecting brokers in seconds |
+| pulsar_broker_operation_timeout_seconds | `3` | The timeout of broker operation in seconds |
+| pulsar_broker_connection_timeout_ms | `3000` | The timeout of broker connection in milliseconds (yea the c++ client uses ms on this) |
 | default_subscription | GENERATED | The default subscription name over all jobs |
 | default_topic | `nil` | The default topic for jobs |
 | logger | `Logger.new(STDOUT)` | The default logger instance to STDOUT |
@@ -217,6 +221,10 @@ module YourModule
   end
 end
 ```
+
+### Broker Failure
+
+The underlying pulsar ruby client based on the C++ client, when the client is failed to connect to a broker, an error Pulsar::Error::ConnectError will be raised and crashing your application. Pulsar Job makes use of the service discovery nature of Pulsar brokers to handle retry with broker disconnectivity. By default, Pulsar Job will extract the broker url and connect to a random broker, supposingly Pulsar broker will help to redirect client to a right broker that the topic is correctly located. So when a broker is failed, Pulsar Job will help to reconnect to another broker automatically with a configurable retry.
 
 ### Pulsar Job Command Options
 

@@ -27,7 +27,9 @@ module PulsarJob
         end
 
         def create(topic)
-          Client.instance.create_producer(topic, producer_options)
+          Client.instance_exec do |instance|
+            instance.create_producer(topic, producer_options)
+          end
         end
 
         def shutdown
