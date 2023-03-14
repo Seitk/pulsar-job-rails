@@ -50,15 +50,16 @@ module PulsarJob
       false
     end
 
-    def consumer_options
-      {
-        consumer_type: consumer_type,
-      }
+    def batched_consume?
+      false
     end
 
-    def consumer_type
-      # https://github.com/instructure/pulsar-client-ruby/blob/2.6.1-beta.2/lib/pulsar/consumer_configuration.rb#L29
-      ::PulsarJob.configuration.default_consumer_type || :shared
+    def consumer_options
+      ::Pulsar::ConsumerConfiguration.new.tap do |config|
+        config.consumer_type = PulsarJob.configuration.default_consumer_type
+        config.unacked_messages_timeout_ms = PulsarJob.configuration.consumer_unacked_messages_timeout_millis
+        config.batch_receive_policy = PulsarJob.configuration.consumer_batch_receive_policy if batched_consume?
+      end
     end
 
     def context_valid?

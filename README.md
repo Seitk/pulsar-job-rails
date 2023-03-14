@@ -35,7 +35,8 @@ You can setup some global configuration on Pulsar Job
 | default_topic | `nil` | The default topic for jobs |
 | logger | `Logger.new(STDOUT)` | The default logger instance to STDOUT |
 | max_shutdown_wait_seconds | `60` | Default max gracefully shutdown period in seconds |
-| producer_send_timeout_millis | `3000` | Timeout on connecting producer |
+| producer_send_timeout_millis | `3000` | Timeout on connecting producer in milliseconds |
+| consumer_unacked_messages_timeout_millis | `60000` | Timeout on consumer unacked message in milliseconds |
 
 ### Job Class Definition
 
@@ -60,7 +61,9 @@ You can override some methods to configure the job consume options.
 | method | `perform` | The handler method when the job consumes |
 | deliver_after | `nil` | The delay on job execution in milliseconds |
 | deliver_at | `nil` | The exact execution time in unix timestamp |
+| consumer_options | `nil` | Predefined `Pulsar::ConsumerConfiguration`, override this for per-job configuration |
 | payload_as_args? | `true` | By default we will flatten the payload as arguments to compatible with Backburner/ActiveJob interface, override this method and return `false` to obtain the raw payload |
+| batched_consume? | `false` | By default jobs are consumed one by one, override this to use batch receive instead. Expected to set `batch_receive_policy` in `consumer_options`. Default batch consumer messages is `30` and timeout in `10` seconds |
 
 ### Async Wrapper
 
@@ -229,7 +232,7 @@ The underlying pulsar ruby client based on the C++ client, when the client is fa
 ### Pulsar Job Command Options
 
 | Option | Description |
-|--|--|--|
+|--|--|
 | data | Payload of producer in JSON string format |
 | topic | Specify the topic of consumer, override the topic specified in class |
 | subscription | The subscription name of consumer, ignore global config |
