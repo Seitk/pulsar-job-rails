@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'active_support/concern'
+require "active_support/concern"
 
 module PulsarJob
   module Asyncable
@@ -22,7 +22,7 @@ module PulsarJob
         else
           # Static method
           klass.singleton_class.send(:alias_method, "#{method}_without_async", method)
-          klass.singleton_class .send(:define_method, method) do |*args|
+          klass.singleton_class.send(:define_method, method) do |*args|
             wrapper.enqueue(method, args)
           end
         end
@@ -31,7 +31,7 @@ module PulsarJob
 
     def self.included(base)
       base.extend ClassMethods
-      
+
       def async
         PulsarJob::Async::Wrapper.new(self.class).tap do |wrapper|
           wrapper.instance = self

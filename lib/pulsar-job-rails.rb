@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "active_support/core_ext/module/delegation"
 require "pulsar-job-rails/version"
 require "pulsar-job-rails/configuration"
 require "pulsar-job-rails/cli"

@@ -6,14 +6,16 @@ module PulsarJob
       class << self
         @@pulsar_job_pool_consumers_lock = Mutex.new
 
-        def get(topic)
+        def get(topic, subscription)
           @@pulsar_job_pool_consumers_lock.synchronize {
             $pulsar_job_pool_consumers ||= {}
-            $pulsar_job_pool_consumers[topic]
+            $pulsar_job_pool_consumers["#{topic}-#{subscription}"]
           }
         end
 
         def subscribe(topic, subscription, options = {})
+          consumer = nil
+
           @@pulsar_job_pool_consumers_lock.synchronize do
             key = "#{topic}-#{subscription}"
 
@@ -27,6 +29,8 @@ module PulsarJob
             $pulsar_job_pool_consumers[key] ||= consumer
             consumer
           end
+
+          consumer
         end
 
         def shutdown
