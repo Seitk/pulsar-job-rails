@@ -2,17 +2,16 @@ name: RSpec
 
 on:
   push:
-    branches:
-      - main
-      - master
   pull_request:
     branches:
       - main
-      - master
 
 jobs:
   rspec:
     runs-on: ubuntu-latest
+
+    env:
+      PULSAR_VERSION: '3.1.1'
 
     strategy:
       matrix:
@@ -21,6 +20,23 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+
+    - name: Cache package
+      uses: actions/cache@v2
+      with:
+        path: /tmp/apache-pulsar-client
+        key: apache-pulsar-client-${{ hashFiles('/tmp/apache-pulsar-client') }}
+
+    - name: Install dependency
+      run: |
+        mkdir -p /tmp/apache-pulsar-client
+        if ! dpkg-query -W -f='${Status}' apache-pulsar-client 2>/dev/null | grep -q "ok installed"; then
+          if [ ! -f /tmp/apache-pulsar-client/apache-pulsar-client.deb ]; then
+            wget --user-agent=Mozilla -O /tmp/apache-pulsar-client/apache-pulsar-client.deb "https://archive.apache.org/dist/pulsar/pulsar-client-cpp-$PULSAR_VERSION/deb-x86_64/apache-pulsar-client.deb"
+            wget --user-agent=Mozilla -O /tmp/apache-pulsar-client/apache-pulsar-client-dev.deb "https://archive.apache.org/dist/pulsar/pulsar-client-cpp-$PULSAR_VERSION/deb-x86_64/apache-pulsar-client-dev.deb"
+          fi
+          sudo apt install -y /tmp/apache-pulsar-client/apache-pulsar-client*.deb
+        fi
 
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
