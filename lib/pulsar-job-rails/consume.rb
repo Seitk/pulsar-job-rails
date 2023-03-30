@@ -34,7 +34,7 @@ module PulsarJob
     end
 
     def listen
-      @listener = ::Pulsar::Consumer::ListenerToken.new
+      @listener ||= ::Pulsar::Consumer::ListenerToken.new
       while @listener.active?
         @is_running = true
         PulsarJob.logger.debug "Waiting for #{job.batched_consume? ? 'batched ' : ''}message..."
@@ -53,6 +53,8 @@ module PulsarJob
             rescue Pulsar::Error::Timeout
               # No message received, continue
               @is_running = false
+            rescue StandardError => ex
+              PulsarJob.logger.error "Error on polling consumer: #{ex.message}"
             end
           end.join
 

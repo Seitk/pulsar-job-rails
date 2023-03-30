@@ -7,9 +7,10 @@ module PulsarJob
     attr_accessor :job, :producer
 
     class JobClassNotDefinedError < StandardError; end
+
     class << self
       def publish(job, *args)
-        ::PulsarJob::Produce.new(job).publish!({
+        ::PulsarJob::Produce.new(job: job).publish!({
           job: job.class.name,
           method: job._method,
           args: args,
@@ -24,7 +25,7 @@ module PulsarJob
         @job = job_class.new
       end
       raise JobClassNotDefinedError.new("Job class is not defined") if @job.nil?
-      @producer = PulsarJob::Pools::Producers.get(job.topic)
+      @producer = PulsarJob::Pools::Producers.get(@job.topic)
     end
 
     def publish!(payload)
@@ -35,8 +36,8 @@ module PulsarJob
       }
       payload[:sent_at] = DateTime.now.to_s
       producer.send(payload.to_json, {
-        # deliver_after: 5 * 1000
-      })
+ # deliver_after: 5 * 1000
+        })
     end
   end
 end

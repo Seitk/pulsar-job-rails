@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'active_support/concern'
+require "active_support/concern"
 
 module PulsarJob
   module Context
@@ -34,6 +34,7 @@ module PulsarJob
     attr_writer :result
 
     def reset_job_context
+      puts "===== reset_job_context??"
       @args = nil
       @payload = nil
       @created_at = nil
@@ -57,8 +58,7 @@ module PulsarJob
     private
 
     def auto_subscription
-      host_id =
-        if defined?(Socket)
+      host_id = if defined?(Socket)
           Socket.gethostname
         else
           SecureRandom.hex(8)

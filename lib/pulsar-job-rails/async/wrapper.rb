@@ -3,9 +3,8 @@
 module PulsarJob
   module Async
     class Wrapper < Base
-      attr_accessor :klass
-      attr_accessor :instance
-  
+      attr_accessor :klass, :instance
+
       class AsyncMethodMissingError < StandardError; end
       class AsyncInvalidContextError < StandardError; end
 
@@ -27,43 +26,43 @@ module PulsarJob
       end
 
       def perform(payload:, message_id:, raw:)
-        klass = payload['klass'].constantize
-        instance = nil
-        if payload['id'].present?
-          instance = klass.find(payload['id'])
+        klass = payload["klass"].constantize
+        @instance = nil
+        if payload["id"].present?
+          @instance = klass.find(payload["id"])
         end
-        if instance.present?
-          instance.send(payload['method'].to_sym, *(payload['args'] || []))
+        if @instance.present?
+          @instance.send(payload["method"].to_sym, *(payload["args"] || []))
         else
-          klass.send(payload['method'].to_sym, *(payload['args'] || []))
+          klass.send(payload["method"].to_sym, *(payload["args"] || []))
         end
       rescue NameError => ex
-        raise AsyncInvalidContextError.new("Async execution failed, class #{payload['klass']} is invalid. #{ex.message}}")
+        raise AsyncInvalidContextError.new("Async execution failed, class #{payload["klass"]} is invalid. #{ex.message}}")
       end
 
-      def method_missing(method, *args)
-        enqueue(method, args)
+      def method_missing(method_name, *args)
+        enqueue(method_name, args)
         self
       end
-      
-      def enqueue(method, args)
-        @method = method
+
+      def enqueue(method_name, args)
+        @method = method_name
         @args = args
 
         validate_caller!
         validate_context!
 
         payloads ||= {
-          klass: klass.name,
-          method: method,
+          klass: @klass.name,
+          method: @method,
           args: args,
         }
-        if instance.present? && instance.respond_to?(:id)
+        if @instance.present? && @instance.respond_to?(:id)
           payloads[:id] = instance.id
         end
 
         # Enqueue
-        PulsarJob.logger.debug "Enqueueing async job for #{klass.name}.#{method} with #{payloads.inspect}"
+        PulsarJob.logger.debug "Enqueueing async job for #{klass.name}.#{method_name} with #{payloads.inspect}"
         producer = PulsarJob::Produce.new(job: self)
         producer.publish!(payloads)
       end
@@ -71,9 +70,9 @@ module PulsarJob
       private
 
       def validate_caller!
-        if (instance.present? && !@instance.respond_to?(method)) || 
-          (instance.nil? && !@klass.respond_to?(method))
-          raise AsyncMethodMissingError.new("Async execution failed, method #{method} not found")
+        if (@instance.present? && !@instance.respond_to?(@method)) ||
+           (@instance.nil? && !@klass.respond_to?(@method))
+          raise AsyncMethodMissingError.new("Async execution failed, method #{@method} not found")
         end
       end
 
