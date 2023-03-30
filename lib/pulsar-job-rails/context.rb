@@ -34,7 +34,6 @@ module PulsarJob
     attr_writer :result
 
     def reset_job_context
-      puts "===== reset_job_context??"
       @args = nil
       @payload = nil
       @created_at = nil
