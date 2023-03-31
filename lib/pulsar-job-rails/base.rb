@@ -14,6 +14,7 @@ module PulsarJob
     attr_accessor :use_raw_payload
 
     # Message properties
+    attr_accessor :raw
     attr_accessor :payload
     attr_accessor :created_at
 
@@ -39,6 +40,10 @@ module PulsarJob
 
     def topic
       @topic || ::PulsarJob.configuration.default_topic
+    end
+
+    def dlq_topic
+      nil
     end
 
     def payload_as_args?
@@ -71,8 +76,7 @@ module PulsarJob
     private
 
     def auto_subscription
-      host_id =
-        if defined?(Socket)
+      host_id = if defined?(Socket)
           Socket.gethostname
         else
           SecureRandom.hex(8)

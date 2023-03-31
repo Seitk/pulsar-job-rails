@@ -13,7 +13,7 @@ module PulsarJob
           }
         end
 
-        def subscribe(topic, subscription, options = {})
+        def subscribe(topic, subscription, options = {}, &block)
           consumer = nil
 
           @@pulsar_job_pool_consumers_lock.synchronize do
@@ -25,8 +25,9 @@ module PulsarJob
             consumer = Client.instance_exec do |instance|
               instance.subscribe(topic, subscription, options)
             end
+
             $pulsar_job_pool_consumers ||= {}
-            $pulsar_job_pool_consumers[key] ||= consumer
+            $pulsar_job_pool_consumers[key] ||= (yield consumer)
             consumer
           end
 
@@ -37,7 +38,7 @@ module PulsarJob
           return if $pulsar_job_pool_consumers.blank?
 
           $pulsar_job_pool_consumers.each do |_, consumer|
-            consumer.close
+            consumer.shutdown
           end
           PulsarJob.logger.debug "Pulsar consumers closed"
         end

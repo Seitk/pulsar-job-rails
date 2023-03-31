@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require "bundler/setup"
-require File.expand_path(File.join(Dir.pwd, "config", "environment"),  __FILE__)
+require File.expand_path(File.join(Dir.pwd, "config", "environment"), __FILE__)
 
 module PulsarJob
   class << self
@@ -50,8 +50,8 @@ module PulsarJob
         @consumer = ::PulsarJob::Consume.new(job: @job)
       end
 
-      Signal.trap('INT', &method(:gracefully_shutdown))
-      Signal.trap('TERM', &method(:gracefully_shutdown))
+      Signal.trap("INT", &method(:gracefully_shutdown))
+      Signal.trap("TERM", &method(:gracefully_shutdown))
 
       PulsarJob.logger.info "#{job_class_name} is starting to consume messages [topic=#{@consumer.job.topic}}][subscription=#{@consumer.job.subscription}}]"
       @consumer.subscribe!

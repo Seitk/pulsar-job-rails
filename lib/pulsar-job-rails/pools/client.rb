@@ -19,6 +19,8 @@ module PulsarJob
           ::Pulsar::Client.new("pulsar://#{host}", config)
         end
 
+        # Get a pulsar client instance with ability to try with broker hosts
+        # in case of connection failure or single broker is down
         def instance_exec(&block)
           max_retries = PulsarJob.configuration.pulsar_broker_max_retries
           brokers = broker_hosts
@@ -68,10 +70,10 @@ module PulsarJob
 
         def broker_hosts
           @broker_hosts ||= begin
-            matches = PulsarJob.configuration.pulsar_broker_url.match(/pulsar:\/\/(.+)/)
-            raise InvalidClientConfigirationError.new("Invalid client configuration") if matches.length < 2
-            matches[1].split(",")
-          end
+              matches = PulsarJob.configuration.pulsar_broker_url.match(/pulsar:\/\/(.+)/)
+              raise InvalidClientConfigirationError.new("Invalid client configuration") if matches.length < 2
+              matches[1].split(",")
+            end
           @broker_hosts.dup.shuffle
         end
       end

@@ -6,23 +6,17 @@ module PulsarJob
       class << self
         @@pulsar_job_pool_producers_lock = Mutex.new
 
-        def get(topic)
+        # For the same topic, there would be only one producer allowed
+        # So this pool is used to store the producer used previously
+        def get(topic, &block)
           @@pulsar_job_pool_producers_lock.synchronize {
             $pulsar_job_pool_producers ||= {}
-            producer = $pulsar_job_pool_producers[topic]
-            if producer.nil?
-              $pulsar_job_pool_producers[topic] = create(topic)
-              producer = $pulsar_job_pool_producers[topic]
+            raw_producer = $pulsar_job_pool_producers[topic].try(:producer)
+            if raw_producer.nil?
+              raw_producer = create(topic)
+              $pulsar_job_pool_producers[topic] = yield raw_producer
             end
-            producer
-          }
-        end
-
-        def set(topic, producer)
-          @@pulsar_job_pool_producers_lock.synchronize {
-            $pulsar_job_pool_producers ||= {}
-            $pulsar_job_pool_producers[topic] ||= producer
-            producer
+            raw_producer
           }
         end
 
@@ -36,7 +30,7 @@ module PulsarJob
           return if $pulsar_job_pool_producers.blank?
 
           $pulsar_job_pool_producers.each do |topic, producer|
-            producer.close
+            producer.shutdown
           end
           PulsarJob.logger.debug "Pulsar producers closed"
         end
@@ -49,8 +43,7 @@ module PulsarJob
         end
 
         def producer_name
-          host_id =
-            if defined?(Socket)
+          host_id = if defined?(Socket)
               Socket.gethostname
             else
               SecureRandom.hex(8)
