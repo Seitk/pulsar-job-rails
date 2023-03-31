@@ -49,7 +49,6 @@ module PulsarJob
       end
 
       def send_to_dlq
-        puts "====== dlq_topic? #{job.dlq_topic.inspect}"
         # if DLQ is not set, pass to negative_acknowledge
         return false unless job.dlq_topic.present?
 

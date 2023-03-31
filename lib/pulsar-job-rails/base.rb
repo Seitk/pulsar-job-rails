@@ -67,6 +67,10 @@ module PulsarJob
       end
     end
 
+    def max_redelivery_count
+      PulsarJob.configuration.consumer_max_redelivery_count
+    end
+
     def context_valid?
       return false if subscription.nil? || topic.nil?
 

@@ -25,10 +25,8 @@ module PulsarJob
       end
 
       def on_error(ex)
-        PulsarJob.logger.error "Error while handling message: #{ex.inspect} | redelivery_count: #{redelivery_count} | #{ex.backtrace.join("\n")}"
-
         # Interface mismatch, move to DLQ
-        if ex.is_a? ArgumentError || redelivery_count >= 1
+        if ex.is_a? ArgumentError || redelivery_count >= job.max_redelivery_count
           # Send the message to another DLQ topic
           # Automatically nack messages that fail
           if send_to_dlq()
@@ -56,6 +54,32 @@ module PulsarJob
       def process_payload(msg)
         data = JSON.parse(msg.data) rescue nil
         data || msg.data
+      end
+
+      # Expect subclasses to implement the following methods
+
+      def raw_payload
+        fail NotImplementedError
+      end
+
+      def redelivery_count
+        fail NotImplementedError
+      end
+
+      def acknowledge
+        fail NotImplementedError
+      end
+
+      def negative_acknowledge
+        fail NotImplementedError
+      end
+
+      def send_to_dlq
+        fail NotImplementedError
+      end
+
+      def execute(handler)
+        fail NotImplementedError
       end
     end
   end

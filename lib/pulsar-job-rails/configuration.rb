@@ -16,6 +16,9 @@ module PulsarJob
     attr_accessor :consumer_receive_timeout_millis
     attr_accessor :consumer_unacked_messages_timeout_millis
     attr_accessor :consumer_batch_receive_policy
+    attr_accessor :consumer_max_redelivery_count
+
+    attr_accessor :producer_send_timeout_millis
 
     attr_accessor :logger
     attr_accessor :max_shutdown_wait_seconds
@@ -37,6 +40,7 @@ module PulsarJob
     DEFAULT_CONSUMER_BATCH_RECEIVE_MAX_NUM_MESSAGES = 30 # by default taking 30 messages at once
     DEFAULT_CONSUMER_BATCH_RECEIVE_MAX_NUM_BYTES = 0
     DEFAULT_CONSUMER_BATCH_RECEIVE_TIMEOUT_MILLIS = 10_000 # 10 seconds timeout on batch receive
+    DEFAULT_CONSUMER_MAX_REDELIVERY_COUNT = 2_147_483_647 # Unlimited redelivery
 
     def initialize
       @pulsar_broker_url = "pulsar://localhost:6650"
@@ -60,6 +64,7 @@ module PulsarJob
         DEFAULT_CONSUMER_BATCH_RECEIVE_MAX_NUM_BYTES,
         DEFAULT_CONSUMER_BATCH_RECEIVE_TIMEOUT_MILLIS
       )
+      @consumer_max_redelivery_count = DEFAULT_CONSUMER_MAX_REDELIVERY_COUNT
 
       # Producer
       @producer_send_timeout_millis = DEFAULT_PRODUCER_SEND_TIMEOUT_MILLIS
